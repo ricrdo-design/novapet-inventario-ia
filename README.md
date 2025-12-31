@@ -1,0 +1,1 @@
+# novapet-inventario-ia
