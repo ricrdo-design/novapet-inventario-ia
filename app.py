@@ -132,6 +132,13 @@ st.info(
     f"**Política de reposición (MVP):** cobertura objetivo de **{HORIZON_WEEKS} semanas** "
     f"+ **{int(SAFETY_FACTOR*100)}%** de stock de seguridad. "
     "La compra recomendada se calcula para alcanzar el stock objetivo."
+     "**Interpretación de las semanas**  \n"
+    "Las semanas *-4 a -1* corresponden a las **últimas cuatro semanas cerradas registradas por el usuario**, "
+    "independientemente del calendario mensual.  \n"
+    "La **predicción corresponde al consumo esperado de la próxima semana**.  \n"
+    "Para la recomendación de compra, el sistema aplica una **política de reposición** basada en cubrir "
+    "**4 semanas de demanda proyectada + un 20% de stock de seguridad**, "
+    "con el objetivo de mantener continuidad operativa y evitar quiebres de stock."
 )
 
 if st.button("Calcular recomendación"):
