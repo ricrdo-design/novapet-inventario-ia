@@ -1,4 +1,3 @@
-# novapet-inventario-ia
 # NovaPet - Predicción de Inventario con IA
 
 ## Descripción del proyecto
