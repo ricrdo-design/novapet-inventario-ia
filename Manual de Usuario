@@ -1,0 +1,127 @@
+
+---
+
+# Manual de Usuario actualizado
+
+## 📄 MANUAL DE USUARIO – NovaPet
+
+```markdown
+# Manual de Usuario
+## Sistema inteligente de predicción de inventario NovaPet
+
+---
+
+# 1. Descripción general
+
+La aplicación permite estimar el consumo esperado de medicamentos y vacunas en la próxima semana y recomendar compras para cubrir las siguientes 4 semanas.
+
+Fue diseñada para apoyar decisiones operativas de abastecimiento en NovaPet.
+
+---
+
+# 2. Modelo utilizado
+
+## Motor principal:
+
+### Baseline (Promedio móvil de 4 semanas)
+
+Este modelo fue seleccionado porque obtuvo el mejor desempeño en validación técnica del proyecto.
+
+## Comparación opcional:
+
+### Random Forest
+
+Disponible como referencia experimental secundaria.
+
+---
+
+# 3. Cómo usar la aplicación
+
+## Paso 1: Ingresar información del producto
+
+- Nombre del producto
+- Categoría
+- Precio unitario promedio
+
+## Paso 2: Ingresar consumos recientes
+
+- Semana -4
+- Semana -3
+- Semana -2
+- Semana -1
+
+## Paso 3: Ingresar stock actual
+
+Cantidad disponible en inventario.
+
+## Paso 4: Presionar botón
+
+### Calcular recomendación
+
+---
+
+# 4. Qué entrega el sistema
+
+## Predicción principal
+
+Consumo esperado próxima semana.
+
+## Proyección 4 semanas
+
+Demanda estimada mensual.
+
+## Stock de seguridad
+
+20% adicional para prevenir faltantes.
+
+## Stock objetivo
+
+Demanda + seguridad.
+
+## Compra recomendada
+
+Cantidad sugerida a comprar.
+
+## Comparación experimental
+
+Predicción opcional con Random Forest.
+
+---
+
+# 5. Interpretación recomendada
+
+La compra sugerida es una ayuda para decidir, no una orden automática.
+
+Siempre considerar:
+
+- campañas comerciales
+- promociones
+- estacionalidad
+- emergencias veterinarias
+- criterio profesional
+
+---
+
+# 6. Buenas prácticas
+
+Actualizar semanalmente los consumos reales.
+
+Revisar productos críticos primero:
+
+- vacunas
+- antibióticos
+- anestésicos
+- medicamentos de alta rotación
+
+---
+
+# 7. Limitaciones actuales
+
+El sistema aprende del historial disponible.  
+Cambios abruptos no registrados pueden afectar precisión.
+
+---
+
+# 8. Soporte interno
+
+Proyecto NovaPet – Maestría IA Aplicada
