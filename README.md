@@ -1,60 +1,51 @@
-# NovaPet - Predicción de Inventario con IA
+# NovaPet | Predicción inteligente de inventario veterinario
 
-## Descripción del proyecto
-
-Este proyecto desarrolla un sistema inteligente para predecir el consumo semanal de medicamentos críticos en NovaPet, con el objetivo de optimizar la gestión de inventarios y apoyar la toma de decisiones de compra.
-
-El sistema combina técnicas de análisis de series temporales y modelos de aprendizaje automático, evaluados bajo un enfoque comparativo riguroso.
-
----
+Aplicación desarrollada en Streamlit para apoyar la toma de decisiones de compra de medicamentos y vacunas en la clínica veterinaria NovaPet.
 
 ## Objetivo
 
-Desarrollar e implementar un modelo predictivo que estime el consumo semanal por ítem (unidades/semana), validando su desempeño mediante métricas cuantitativas y comparación frente a un modelo baseline.
+Estimar el consumo semanal esperado de productos críticos y recomendar compras futuras utilizando analítica predictiva.
 
 ---
 
-## Enfoque metodológico
+# Lógica del sistema
 
-El pipeline del proyecto incluye:
+## Modelo principal de operación
 
-- Transformación del Kardex en dataset supervisado
-- Feature engineering (lags y promedio móvil)
-- División temporal (train/test)
-- Entrenamiento de modelos:
-  - Baseline: promedio móvil de 4 semanas
-  - Random Forest Regressor
-  - XGBoost Regressor
-- Evaluación con:
-  - MAE
-  - RMSE
-  - R²
+### Baseline (Promedio móvil de 4 semanas)
 
----
+Se utiliza como motor principal porque obtuvo el mejor desempeño técnico durante la validación del proyecto:
 
-## Resultados clave
+| Modelo | MAE | RMSE | R² |
+|-------|------|------|------|
+| Baseline | 1.797 | 3.067 | 0.583 |
+| Random Forest | 2.178 | 4.139 | 0.241 |
+| XGBoost | 2.559 | 4.148 | 0.238 |
 
-El modelo baseline (promedio móvil de 4 semanas) obtuvo el mejor desempeño:
+## Modelo experimental secundario
 
-- MAE: 1.797
-- RMSE: 3.067
-- R²: 0.583
+### Random Forest
 
-Superando a los modelos Random Forest y XGBoost bajo las condiciones actuales del dataset.
+Se mantiene dentro de la aplicación como benchmark comparativo para fines analíticos.
 
 ---
 
-## Aplicación (Streamlit)
+# Funcionalidades
 
-Se desarrolló una aplicación interactiva que permite:
-
-- Ingresar consumos históricos recientes
-- Predecir el consumo semanal
-- Calcular una recomendación de compra
-- Comparar opcionalmente con XGBoost (modo experimental)
-
-El sistema utiliza como motor principal el baseline, por ser el modelo con mejor validación.
+- Predicción de consumo semanal
+- Proyección para 4 semanas
+- Stock de seguridad (+20%)
+- Cálculo de stock objetivo
+- Compra recomendada
+- Comparación experimental con Random Forest
+- Visualización gráfica
 
 ---
 
-## Estructura del repositorio
+# Estructura del repositorio
+
+```bash
+app.py
+modelo_rf_inventario_novapet.pkl
+requirements.txt
+README.md
