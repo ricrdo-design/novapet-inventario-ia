@@ -65,22 +65,6 @@ st.markdown(
         color: white;
         font-weight: 600;
     }
-
-    .metric-label {
-        font-size: 0.95rem;
-        color: #cbd5e1;
-    }
-
-    .metric-value {
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: #ffffff;
-    }
-
-    .section-space {
-        margin-top: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
     </style>
     """,
     unsafe_allow_html=True
@@ -105,6 +89,8 @@ def construir_input_modelo(
     semana_3: float,
     semana_2: float,
     semana_1: float,
+    anio: int,
+    semana: int,
 ) -> pd.DataFrame:
     promedio_4 = (semana_4 + semana_3 + semana_2 + semana_1) / 4
     min_4 = min(semana_4, semana_3, semana_2, semana_1)
@@ -120,6 +106,8 @@ def construir_input_modelo(
             {
                 "producto": producto,
                 "categoria": categoria,
+                "anio": anio,
+                "semana": semana,
                 "precio_unitario": precio_unitario,
                 "lag_1": semana_1,
                 "lag_2": semana_2,
@@ -236,6 +224,12 @@ precio_unitario = st.number_input(
     format="%.2f",
 )
 
+col_anio, col_semana = st.columns(2)
+with col_anio:
+    anio = st.number_input("Año", min_value=2024, value=2026, step=1)
+with col_semana:
+    semana = st.number_input("Semana objetivo", min_value=1, max_value=53, value=13, step=1)
+
 st.markdown("### Consumos recientes (unidades)")
 c1, c2, c3, c4 = st.columns(4)
 
@@ -304,6 +298,8 @@ if st.button("Calcular recomendación"):
                 semana_3=semana_3,
                 semana_2=semana_2,
                 semana_1=semana_1,
+                anio=anio,
+                semana=semana,
             )
 
             try:
