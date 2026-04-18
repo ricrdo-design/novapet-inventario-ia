@@ -1,30 +1,179 @@
+import os
 import math
-from pathlib import Path
-
 import joblib
-import numpy as np
 import pandas as pd
 import streamlit as st
-
+import matplotlib.pyplot as plt
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
 # =========================================================
 st.set_page_config(
-    page_title="NovaPet - Predicción de Inventario",
+    page_title="NovaPet | Predicción de inventario",
     page_icon="📦",
-    layout="centered"
+    layout="wide"
 )
 
 # =========================================================
-# PARÁMETROS DEL PROTOTIPO
+# ESTILO VISUAL
 # =========================================================
-HORIZON_WEEKS = 4
-SAFETY_FACTOR = 0.20
-XGB_MODEL_PATH = Path("modelo_xgb_inventario_novapet.pkl")
+st.markdown(
+    """
+    <style>
+    .main {
+        background-color: #0b1220;
+        color: #f3f4f6;
+    }
 
-# Resultados de validación reales del proyecto
-VALIDATION_RESULTS = pd.DataFrame(
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 900px;
+    }
+
+    h1, h2, h3, h4 {
+        color: #f8fafc;
+    }
+
+    p, li, label, .stMarkdown, .stCaption {
+        color: #e5e7eb;
+    }
+
+    .custom-card {
+        background-color: #152238;
+        padding: 1.2rem;
+        border-radius: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .success-card {
+        background-color: #14532d;
+        padding: 1rem 1.2rem;
+        border-radius: 12px;
+        margin-top: 0.8rem;
+        margin-bottom: 0.8rem;
+        color: white;
+        font-weight: 600;
+    }
+
+    .warning-card {
+        background-color: #5b4a0a;
+        padding: 1rem 1.2rem;
+        border-radius: 12px;
+        margin-top: 0.8rem;
+        margin-bottom: 0.8rem;
+        color: white;
+        font-weight: 600;
+    }
+
+    .metric-label {
+        font-size: 0.95rem;
+        color: #cbd5e1;
+    }
+
+    .metric-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .section-space {
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# =========================================================
+# FUNCIONES AUXILIARES
+# =========================================================
+def redondear_hacia_arriba(valor: float) -> int:
+    return int(math.ceil(valor))
+
+
+def predecir_baseline(semana_4: float, semana_3: float, semana_2: float, semana_1: float) -> float:
+    return (semana_4 + semana_3 + semana_2 + semana_1) / 4
+
+
+def construir_input_modelo(
+    producto: str,
+    categoria: str,
+    precio_unitario: float,
+    semana_4: float,
+    semana_3: float,
+    semana_2: float,
+    semana_1: float,
+) -> pd.DataFrame:
+    promedio_4 = (semana_4 + semana_3 + semana_2 + semana_1) / 4
+    min_4 = min(semana_4, semana_3, semana_2, semana_1)
+    max_4 = max(semana_4, semana_3, semana_2, semana_1)
+
+    valores = [semana_4, semana_3, semana_2, semana_1]
+    std_4 = float(pd.Series(valores).std()) if len(set(valores)) > 1 else 0.0
+
+    tendencia_2 = semana_1 - semana_2
+
+    df_input = pd.DataFrame(
+        [
+            {
+                "producto": producto,
+                "categoria": categoria,
+                "precio_unitario": precio_unitario,
+                "lag_1": semana_1,
+                "lag_2": semana_2,
+                "lag_3": semana_3,
+                "lag_4": semana_4,
+                "promedio_4": promedio_4,
+                "min_4": min_4,
+                "max_4": max_4,
+                "std_4": std_4,
+                "tendencia_2": tendencia_2,
+            }
+        ]
+    )
+
+    return df_input
+
+
+@st.cache_resource
+def cargar_modelo_rf():
+    ruta = "modelo_rf_inventario_novapet.pkl"
+    if os.path.exists(ruta):
+        return joblib.load(ruta)
+    return None
+
+
+def render_card(texto: str, color_class: str = "custom-card"):
+    st.markdown(f"<div class='{color_class}'>{texto}</div>", unsafe_allow_html=True)
+
+
+# =========================================================
+# CARGA MODELO EXPERIMENTAL
+# =========================================================
+modelo_rf = cargar_modelo_rf()
+
+# =========================================================
+# HEADER
+# =========================================================
+st.title("NovaPet | Predicción de inventario")
+st.subheader("Medicamentos y vacunas")
+st.caption("Prototipo funcional de apoyo a la decisión para estimar consumo semanal y recomendar compras.")
+
+st.info(
+    "Este prototipo utiliza como motor principal de predicción el **Baseline "
+    "(promedio móvil de 4 semanas)**, debido a que fue el enfoque con mejor "
+    "desempeño en la validación técnica del proyecto. "
+    "**Random Forest** se mantiene como referencia experimental secundaria."
+)
+
+# =========================================================
+# 1) VALIDACIÓN TÉCNICA DEL PROYECTO
+# =========================================================
+st.markdown("## 1) Validación técnica del proyecto")
+
+df_validacion = pd.DataFrame(
     {
         "Modelo": [
             "Baseline (Promedio móvil 4 semanas)",
@@ -33,152 +182,37 @@ VALIDATION_RESULTS = pd.DataFrame(
         ],
         "MAE": [1.797, 2.178, 2.559],
         "RMSE": [3.067, 4.139, 4.148],
-        "R2": [0.583, 0.241, 0.238],
+        "R²": [0.583, 0.241, 0.238],
+        "Mejora_MAE_vs_Baseline_%": [0.0, -21.2, -42.4],
     }
 )
 
-VALIDATION_RESULTS["Mejora_MAE_vs_Baseline_%"] = (
-    (VALIDATION_RESULTS.loc[0, "MAE"] - VALIDATION_RESULTS["MAE"])
-    / VALIDATION_RESULTS.loc[0, "MAE"]
-    * 100
-).round(2)
+st.dataframe(df_validacion, use_container_width=True)
 
-VALIDATION_RESULTS.loc[
-    VALIDATION_RESULTS["Modelo"] == "Baseline (Promedio móvil 4 semanas)",
-    "Mejora_MAE_vs_Baseline_%"
-] = 0.0
-
-
-# =========================================================
-# FUNCIONES AUXILIARES
-# =========================================================
-@st.cache_resource
-def load_xgb_model(path: str):
-    p = Path(path)
-    if p.exists():
-        return joblib.load(p)
-    return None
-
-
-def baseline_prediction(cons_w4: float, cons_w3: float, cons_w2: float, cons_w1: float) -> float:
-    """
-    Predicción principal del prototipo:
-    promedio móvil de las últimas 4 semanas cerradas.
-    """
-    values = [cons_w4, cons_w3, cons_w2, cons_w1]
-    return float(np.mean(values))
-
-
-def build_xgb_input(
-    producto: str,
-    categoria: str,
-    precio_unitario: float,
-    cons_w4: float,
-    cons_w3: float,
-    cons_w2: float,
-    cons_w1: float,
-) -> pd.DataFrame:
-    """
-    Construye el DataFrame de entrada para el modelo XGBoost entrenado.
-    Debe coincidir con las variables usadas en el notebook final.
-    """
-    from datetime import date
-
-    today = date.today()
-    iso = today.isocalendar()
-
-    lag_1 = float(cons_w1)
-    lag_2 = float(cons_w2)
-    lag_3 = float(cons_w3)
-    lag_4 = float(cons_w4)
-    promedio_4 = float(np.mean([cons_w1, cons_w2, cons_w3, cons_w4]))
-
-    X_pred = pd.DataFrame([{
-        "producto": str(producto),
-        "categoria": str(categoria),
-        "anio": int(iso.year),
-        "semana": int(iso.week),
-        "precio_unitario": float(precio_unitario),
-        "lag_1": lag_1,
-        "lag_2": lag_2,
-        "lag_3": lag_3,
-        "lag_4": lag_4,
-        "promedio_4": promedio_4,
-    }])
-
-    return X_pred
-
-
-def compute_inventory_policy(pred_week: float, stock_actual: float):
-    """
-    Convierte la predicción semanal en recomendación de compra.
-    """
-    pred_week = max(0.0, float(pred_week))
-    stock_actual = max(0.0, float(stock_actual))
-
-    demanda_4_semanas = pred_week * HORIZON_WEEKS
-    stock_seguridad = demanda_4_semanas * SAFETY_FACTOR
-    stock_objetivo = demanda_4_semanas + stock_seguridad
-    compra_recomendada = max(stock_objetivo - stock_actual, 0.0)
-
-    return {
-        "pred_week": pred_week,
-        "demanda_4_semanas": demanda_4_semanas,
-        "stock_seguridad": stock_seguridad,
-        "stock_objetivo": stock_objetivo,
-        "compra_recomendada": math.ceil(compra_recomendada)
-    }
-
-
-# =========================================================
-# ENCABEZADO
-# =========================================================
-st.title("NovaPet | Predicción de inventario")
-st.subheader("Medicamentos y vacunas")
-st.caption(
-    "Prototipo funcional de apoyo a la decisión para estimar consumo semanal y recomendar compras."
-)
-
-st.info(
-    "Este prototipo utiliza como **motor principal de predicción** el "
-    "**Baseline (promedio móvil de 4 semanas)**, debido a que fue el enfoque con mejor desempeño "
-    "en la validación técnica del proyecto. XGBoost se mantiene como referencia experimental."
-)
-
-# =========================================================
-# RESULTADOS DE VALIDACIÓN
-# =========================================================
-st.markdown("### 1) Validación técnica del proyecto")
-
-st.dataframe(VALIDATION_RESULTS, use_container_width=True)
-
-best_row = VALIDATION_RESULTS.sort_values("MAE").iloc[0]
-
-st.success(
-    f"Modelo con mejor validación: **{best_row['Modelo']}** | "
-    f"MAE = **{best_row['MAE']:.3f}** | "
-    f"RMSE = **{best_row['RMSE']:.3f}** | "
-    f"R² = **{best_row['R2']:.3f}**"
+render_card(
+    "Modelo con mejor validación: <b>Baseline (Promedio móvil 4 semanas)</b> | "
+    "MAE = <b>1.797</b> | RMSE = <b>3.067</b> | R² = <b>0.583</b>",
+    color_class="success-card"
 )
 
 st.caption(
     "Interpretación: un menor MAE y RMSE indica menor error de predicción. "
-    "El Baseline superó a Random Forest y XGBoost con los datos reales actuales del Kardex."
+    "Entre los modelos de machine learning evaluados, **Random Forest** presentó "
+    "mejor desempeño que **XGBoost**, aunque ambos fueron superados por el Baseline."
 )
 
 # =========================================================
-# ENTRADAS DEL USUARIO
+# 2) DATOS DE ENTRADA
 # =========================================================
-st.markdown("### 2) Datos de entrada")
+st.markdown("## 2) Datos de entrada")
+st.markdown("### Cómo ingresar los datos correctamente")
 
 st.markdown(
     """
-**Cómo ingresar los datos correctamente**
-
-- **Semana -4**: consumo de hace 4 semanas  
-- **Semana -3**: consumo de hace 3 semanas  
-- **Semana -2**: consumo de hace 2 semanas  
-- **Semana -1**: consumo de la última semana cerrada  
+- **Semana -4:** consumo de hace 4 semanas  
+- **Semana -3:** consumo de hace 3 semanas  
+- **Semana -2:** consumo de hace 2 semanas  
+- **Semana -1:** consumo de la última semana cerrada  
 
 La predicción principal estima el **consumo esperado de la próxima semana**.  
 Luego, el sistema calcula una recomendación de compra para cubrir:
@@ -189,10 +223,8 @@ Luego, el sistema calcula una recomendación de compra para cubrir:
 )
 
 col1, col2 = st.columns(2)
-
 with col1:
     producto = st.text_input("Producto", value="MELOXICAM 1.5MG 10ML")
-
 with col2:
     categoria = st.text_input("Categoría", value="FARMACIA")
 
@@ -200,148 +232,117 @@ precio_unitario = st.number_input(
     "Precio unitario promedio (USD)",
     min_value=0.0,
     value=1.70,
-    step=0.1,
-    help="El baseline no depende del precio, pero se solicita para mantener trazabilidad y permitir comparación experimental con XGBoost."
+    step=0.10,
+    format="%.2f",
 )
 
-st.markdown("#### Consumos recientes (unidades)")
-
+st.markdown("### Consumos recientes (unidades)")
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    cons_w4 = st.number_input("Semana -4", min_value=0.0, value=4.0, step=1.0)
-
+    semana_4 = st.number_input("Semana -4", min_value=0.0, value=4.0, step=1.0)
 with c2:
-    cons_w3 = st.number_input("Semana -3", min_value=0.0, value=3.0, step=1.0)
-
+    semana_3 = st.number_input("Semana -3", min_value=0.0, value=3.0, step=1.0)
 with c3:
-    cons_w2 = st.number_input("Semana -2", min_value=0.0, value=3.0, step=1.0)
-
+    semana_2 = st.number_input("Semana -2", min_value=0.0, value=3.0, step=1.0)
 with c4:
-    cons_w1 = st.number_input("Semana -1", min_value=0.0, value=6.0, step=1.0)
+    semana_1 = st.number_input("Semana -1", min_value=0.0, value=6.0, step=1.0)
 
-stock_actual = st.number_input(
-    "Stock actual (unidades)",
-    min_value=0.0,
-    value=4.0,
-    step=1.0
-)
+stock_actual = st.number_input("Stock actual (unidades)", min_value=0.0, value=4.0, step=1.0)
 
-comparar_xgb = st.checkbox(
-    "Mostrar comparación experimental con XGBoost",
-    value=True
-)
-
-# Advertencia si no hay señal reciente
-if (cons_w1 + cons_w2 + cons_w3 + cons_w4) == 0:
-    st.warning(
-        "No se ingresó consumo en las últimas 4 semanas. "
-        "La predicción será poco representativa."
-    )
+mostrar_rf = st.checkbox("Mostrar comparación experimental con Random Forest", value=True)
 
 # =========================================================
-# CÁLCULO PRINCIPAL
+# 3) PREDICCIÓN Y RECOMENDACIÓN
 # =========================================================
-st.markdown("### 3) Predicción y recomendación")
+st.markdown("## 3) Predicción y recomendación")
 
 if st.button("Calcular recomendación"):
+    pred_baseline = predecir_baseline(semana_4, semana_3, semana_2, semana_1)
 
-    # -----------------------------
-    # Predicción principal: Baseline
-    # -----------------------------
-    pred_baseline = baseline_prediction(cons_w4, cons_w3, cons_w2, cons_w1)
-    result = compute_inventory_policy(pred_baseline, stock_actual)
+    demanda_4_semanas = pred_baseline * 4
+    stock_seguridad = demanda_4_semanas * 0.20
+    stock_objetivo = demanda_4_semanas + stock_seguridad
+    compra_recomendada = max(stock_objetivo - stock_actual, 0)
+    compra_recomendada_redondeada = redondear_hacia_arriba(compra_recomendada)
 
-    st.success(
-        f"Consumo esperado (próxima semana) con **Baseline**: "
-        f"**{result['pred_week']:.2f} unidades**"
+    render_card(
+        f"Consumo esperado (próxima semana) con <b>Baseline</b>: <b>{pred_baseline:.2f} unidades</b>",
+        color_class="success-card"
     )
 
-    st.write(
-        f"**Demanda esperada {HORIZON_WEEKS} semanas:** {result['demanda_4_semanas']:.2f} unidades"
-    )
-    st.write(
-        f"**Stock de seguridad ({int(SAFETY_FACTOR * 100)}%):** {result['stock_seguridad']:.2f} unidades"
-    )
-    st.write(
-        f"**Stock objetivo:** {result['stock_objetivo']:.2f} unidades"
-    )
-    st.write(
-        f"**Stock actual:** {stock_actual:.2f} unidades"
+    st.markdown(f"**Demanda esperada 4 semanas:** {demanda_4_semanas:.2f} unidades")
+    st.markdown(f"**Stock de seguridad (20%):** {stock_seguridad:.2f} unidades")
+    st.markdown(f"**Stock objetivo:** {stock_objetivo:.2f} unidades")
+    st.markdown(f"**Stock actual:** {stock_actual:.2f} unidades")
+
+    render_card(
+        f"Compra recomendada: <b>{compra_recomendada_redondeada} unidades</b> "
+        f"(redondeado hacia arriba)",
+        color_class="warning-card"
     )
 
-    if result["compra_recomendada"] == 0:
-        st.info("Compra recomendada: **0 unidades**")
-    else:
-        st.warning(
-            f"Compra recomendada: **{result['compra_recomendada']} unidades** "
-            f"(redondeado hacia arriba)"
-        )
+    # =====================================================
+    # 4) COMPARACIÓN EXPERIMENTAL
+    # =====================================================
+    pred_rf = None
 
-    # -----------------------------
-    # Comparación experimental con XGBoost
-    # -----------------------------
-    if comparar_xgb:
-        st.markdown("### 4) Comparación experimental")
+    if mostrar_rf:
+        st.markdown("## 4) Comparación experimental")
 
-        xgb_model = load_xgb_model(str(XGB_MODEL_PATH))
-
-        if xgb_model is None:
-            st.caption(
-                "No se encontró el archivo `modelo_xgb_inventario_novapet.pkl`. "
-                "La comparación experimental no se puede ejecutar en esta versión."
+        if modelo_rf is None:
+            st.warning(
+                "No se encontró el archivo **modelo_rf_inventario_novapet.pkl**. "
+                "La comparación experimental con Random Forest no se puede ejecutar en esta versión."
             )
         else:
+            df_input_modelo = construir_input_modelo(
+                producto=producto,
+                categoria=categoria,
+                precio_unitario=precio_unitario,
+                semana_4=semana_4,
+                semana_3=semana_3,
+                semana_2=semana_2,
+                semana_1=semana_1,
+            )
+
             try:
-                X_pred_xgb = build_xgb_input(
-                    producto=producto,
-                    categoria=categoria,
-                    precio_unitario=precio_unitario,
-                    cons_w4=cons_w4,
-                    cons_w3=cons_w3,
-                    cons_w2=cons_w2,
-                    cons_w1=cons_w1,
-                )
+                pred_rf = float(modelo_rf.predict(df_input_modelo)[0])
 
-                pred_xgb = float(xgb_model.predict(X_pred_xgb)[0])
-                pred_xgb = max(0.0, pred_xgb)
-
-                st.write(f"**Predicción experimental con XGBoost:** {pred_xgb:.2f} unidades")
+                st.write(f"**Predicción experimental con Random Forest:** {pred_rf:.2f} unidades")
                 st.write(f"**Predicción principal con Baseline:** {pred_baseline:.2f} unidades")
 
-                diferencia = pred_xgb - pred_baseline
+                diferencia = pred_rf - pred_baseline
                 st.caption(
-                    f"Diferencia XGBoost - Baseline: {diferencia:.2f} unidades. "
+                    f"Diferencia Random Forest - Baseline: {diferencia:.2f} unidades. "
                     "La decisión operativa del prototipo se mantiene en el Baseline, "
                     "por ser el mejor modelo en validación."
                 )
 
-                st.dataframe(X_pred_xgb, use_container_width=True)
+                st.dataframe(df_input_modelo, use_container_width=True)
 
             except Exception as e:
-                st.error(f"No fue posible generar la comparación con XGBoost. Error: {e}")
+                st.error(f"No fue posible ejecutar la predicción experimental con Random Forest: {e}")
 
-    # -----------------------------
-    # Gráfico
-    # -----------------------------
-    chart_df = pd.DataFrame({
-        "Periodo": ["Semana -4", "Semana -3", "Semana -2", "Semana -1", "Pred. Baseline"],
-        "Consumo": [cons_w4, cons_w3, cons_w2, cons_w1, pred_baseline]
-    }).set_index("Periodo")
+    # =====================================================
+    # 5) VISUALIZACIÓN
+    # =====================================================
+    st.markdown("## 5) Visualización")
 
-    st.markdown("### 5) Visualización")
-    st.line_chart(chart_df)
+    labels = ["Semana -4", "Semana -3", "Semana -2", "Semana -1", "Pred. Baseline"]
+    values = [semana_4, semana_3, semana_2, semana_1, pred_baseline]
 
-    st.caption(
-        "La línea final representa la predicción de la próxima semana usando el enfoque "
-        "que obtuvo el mejor desempeño en la validación técnica."
-    )
+    if pred_rf is not None:
+        labels.append("Pred. RF")
+        values.append(pred_rf)
 
-# =========================================================
-# PIE
-# =========================================================
-st.divider()
-st.caption(
-    "NovaPet | Prototipo académico de predicción de inventario. "
-    "El sistema implementa el enfoque de mejor desempeño validado y conserva XGBoost como comparación experimental."
-)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(labels, values, marker="o")
+    ax.set_title("Consumo reciente y predicciones")
+    ax.set_ylabel("Unidades")
+    ax.tick_params(axis="x", rotation=45)
+
+    st.pyplot(fig)
+
+else:
+    st.caption("Ingresa los datos y presiona **Calcular recomendación** para generar la predicción.")
