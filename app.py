@@ -126,14 +126,16 @@ def redondear_hacia_arriba(valor: float) -> int:
     return int(math.ceil(valor))
 
 
-def predecir_baseline(semana_4: float, semana_3: float, semana_2: float, semana_1: float) -> float:
+def predecir_baseline(
+    semana_4: int,
+    semana_3: int,
+    semana_2: int,
+    semana_1: int,
+) -> float:
     return (semana_4 + semana_3 + semana_2 + semana_1) / 4
 
 
 def rango_semana_iso(anio: int, semana: int):
-    """
-    Calcula lunes y domingo de una semana ISO.
-    """
     inicio = date.fromisocalendar(int(anio), int(semana), 1)
     fin = inicio + timedelta(days=6)
     return inicio, fin
@@ -141,9 +143,18 @@ def rango_semana_iso(anio: int, semana: int):
 
 def formato_fecha_es(fecha: date) -> str:
     meses = {
-        1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
-        5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
-        9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
+        1: "enero",
+        2: "febrero",
+        3: "marzo",
+        4: "abril",
+        5: "mayo",
+        6: "junio",
+        7: "julio",
+        8: "agosto",
+        9: "septiembre",
+        10: "octubre",
+        11: "noviembre",
+        12: "diciembre",
     }
     return f"{fecha.day} de {meses[fecha.month]} de {fecha.year}"
 
@@ -152,10 +163,10 @@ def construir_input_modelo(
     producto: str,
     categoria: str,
     precio_unitario: float,
-    semana_4: float,
-    semana_3: float,
-    semana_2: float,
-    semana_1: float,
+    semana_4: int,
+    semana_3: int,
+    semana_2: int,
+    semana_1: int,
     anio: int,
     semana: int,
 ) -> pd.DataFrame:
@@ -176,15 +187,15 @@ def construir_input_modelo(
                 "anio": int(anio),
                 "semana": int(semana),
                 "precio_unitario": float(precio_unitario),
-                "lag_1": float(semana_1),
-                "lag_2": float(semana_2),
-                "lag_3": float(semana_3),
-                "lag_4": float(semana_4),
+                "lag_1": int(semana_1),
+                "lag_2": int(semana_2),
+                "lag_3": int(semana_3),
+                "lag_4": int(semana_4),
                 "promedio_4": float(promedio_4),
-                "min_4": float(min_4),
-                "max_4": float(max_4),
+                "min_4": int(min_4),
+                "max_4": int(max_4),
                 "std_4": float(std_4),
-                "tendencia_2": float(tendencia_2),
+                "tendencia_2": int(tendencia_2),
             }
         ]
     )
@@ -215,7 +226,10 @@ modelo_rf = cargar_modelo_rf()
 # =========================================================
 st.title("NovaPet | Predicción de inventario")
 st.subheader("Medicamentos y vacunas")
-st.caption("Prototipo funcional de apoyo a la decisión para estimar consumo semanal y recomendar compras.")
+st.caption(
+    "Prototipo funcional de apoyo a la decisión para estimar consumo semanal "
+    "y recomendar compras."
+)
 
 st.markdown(
     """
@@ -226,7 +240,7 @@ st.markdown(
     como referencia experimental secundaria.
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
@@ -254,7 +268,7 @@ st.dataframe(df_validacion, use_container_width=True)
 render_card(
     "Modelo con mejor validación: <b>Baseline (Promedio móvil 4 semanas)</b> | "
     "MAE = <b>1.797</b> | RMSE = <b>3.067</b> | R² = <b>0.583</b>",
-    "success-card"
+    "success-card",
 )
 
 st.caption(
@@ -274,7 +288,7 @@ producto = st.selectbox(
     "Selecciona el producto",
     options=list(CATALOGO_PRODUCTOS.keys()),
     index=0,
-    help="Selecciona el medicamento o vacuna desde el catálogo para evitar errores de digitación."
+    help="Selecciona el medicamento o vacuna desde el catálogo para evitar errores de digitación.",
 )
 
 categoria = CATALOGO_PRODUCTOS[producto]["categoria"]
@@ -292,7 +306,7 @@ with col_precio:
         value=float(precio_unitario),
         step=0.10,
         format="%.2f",
-        disabled=True
+        disabled=True,
     )
 
 st.markdown("### Semana proyectada")
@@ -309,7 +323,7 @@ with col_semana:
         max_value=53,
         value=13,
         step=1,
-        help="Semana calendario ISO para la cual se desea proyectar el consumo."
+        help="Semana calendario ISO para la cual se desea proyectar el consumo.",
     )
 
 try:
@@ -330,25 +344,25 @@ st.markdown(
     La predicción principal estima el consumo esperado de la siguiente semana.
     </span>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    semana_4 = st.number_input("Semana -4", min_value=0.0, value=4.0, step=1.0)
+    semana_4 = st.number_input("Semana -4", min_value=0, value=4, step=1)
 with c2:
-    semana_3 = st.number_input("Semana -3", min_value=0.0, value=3.0, step=1.0)
+    semana_3 = st.number_input("Semana -3", min_value=0, value=3, step=1)
 with c3:
-    semana_2 = st.number_input("Semana -2", min_value=0.0, value=3.0, step=1.0)
+    semana_2 = st.number_input("Semana -2", min_value=0, value=3, step=1)
 with c4:
-    semana_1 = st.number_input("Semana -1", min_value=0.0, value=6.0, step=1.0)
+    semana_1 = st.number_input("Semana -1", min_value=0, value=6, step=1)
 
 stock_actual = st.number_input(
     "Stock actual disponible (unidades)",
-    min_value=0.0,
-    value=4.0,
-    step=1.0
+    min_value=0,
+    value=4,
+    step=1,
 )
 
 stock_seguridad_pct = st.slider(
@@ -357,7 +371,7 @@ stock_seguridad_pct = st.slider(
     max_value=50,
     value=20,
     step=5,
-    help="Porcentaje adicional sobre la demanda proyectada para reducir riesgo de quiebre de stock."
+    help="Porcentaje adicional sobre la demanda proyectada para reducir riesgo de quiebre de stock.",
 )
 
 mostrar_rf = st.checkbox("Mostrar comparación experimental con Random Forest", value=True)
@@ -371,45 +385,58 @@ st.markdown("## 3) Predicción y recomendación")
 if st.button("Calcular recomendación", type="primary"):
     pred_baseline = predecir_baseline(semana_4, semana_3, semana_2, semana_1)
 
-    demanda_4_semanas = pred_baseline * 4
-    stock_seguridad = demanda_4_semanas * (stock_seguridad_pct / 100)
+    # Todo a enteros operativos
+    consumo_semana = redondear_hacia_arriba(pred_baseline)
+    demanda_4_semanas = consumo_semana * 4
+    stock_seguridad = redondear_hacia_arriba(
+        demanda_4_semanas * (stock_seguridad_pct / 100)
+    )
     stock_objetivo = demanda_4_semanas + stock_seguridad
-    compra_recomendada = max(stock_objetivo - stock_actual, 0)
-    compra_recomendada_redondeada = redondear_hacia_arriba(compra_recomendada)
+    compra_recomendada = max(stock_objetivo - int(stock_actual), 0)
+    compra_recomendada_redondeada = int(compra_recomendada)
 
     st.markdown("### Resultado operativo")
 
     k1, k2, k3, k4 = st.columns(4)
 
-    k1.metric("Consumo próxima semana", f"{pred_baseline:.2f} u.")
-    k2.metric("Demanda 4 semanas", f"{demanda_4_semanas:.2f} u.")
-    k3.metric("Stock objetivo", f"{stock_objetivo:.2f} u.")
+    k1.metric("Consumo próxima semana", f"{consumo_semana} u.")
+    k2.metric("Demanda 4 semanas", f"{demanda_4_semanas} u.")
+    k3.metric("Stock objetivo", f"{stock_objetivo} u.")
     k4.metric("Compra sugerida", f"{compra_recomendada_redondeada} u.")
 
+    # Riesgo e inversión
+    if stock_actual < consumo_semana:
+        st.error("Riesgo alto: el stock actual no cubre el consumo esperado de la próxima semana.")
+
+    if compra_recomendada_redondeada > 0:
+        costo_compra = compra_recomendada_redondeada * precio_unitario
+        st.info(f"Inversión estimada de compra: *${costo_compra:.2f} USD*")
+
+    # Semáforo operativo
     if compra_recomendada_redondeada == 0:
         render_card(
             "Estado: stock suficiente. No se recomienda compra inmediata.",
-            "success-card"
+            "success-card",
         )
     elif compra_recomendada_redondeada <= 5:
         render_card(
             "Estado: compra moderada recomendada.",
-            "warning-card"
+            "warning-card",
         )
     else:
         render_card(
             "Estado: compra prioritaria recomendada para evitar quiebre de stock.",
-            "danger-card"
+            "danger-card",
         )
 
     st.markdown(
         f"""
-        **Detalle del cálculo:**  
-        - Consumo esperado próxima semana: **{pred_baseline:.2f} unidades**  
-        - Demanda proyectada a 4 semanas: **{demanda_4_semanas:.2f} unidades**  
-        - Stock de seguridad ({stock_seguridad_pct}%): **{stock_seguridad:.2f} unidades**  
-        - Stock objetivo: **{stock_objetivo:.2f} unidades**  
-        - Stock actual: **{stock_actual:.2f} unidades**  
+        *Detalle del cálculo:*  
+        - Consumo esperado próxima semana: *{consumo_semana} unidades*  
+        - Demanda proyectada a 4 semanas: *{demanda_4_semanas} unidades*  
+        - Stock de seguridad ({stock_seguridad_pct}%): *{stock_seguridad} unidades*  
+        - Stock objetivo: *{stock_objetivo} unidades*  
+        - Stock actual: *{int(stock_actual)} unidades*  
         """
     )
 
@@ -423,7 +450,7 @@ if st.button("Calcular recomendación", type="primary"):
 
         if modelo_rf is None:
             st.warning(
-                "No se encontró el archivo **modelo_rf_inventario_novapet.pkl**. "
+                "No se encontró el archivo *modelo_rf_inventario_novapet.pkl*. "
                 "La comparación experimental con Random Forest no se puede ejecutar."
             )
         else:
@@ -440,15 +467,15 @@ if st.button("Calcular recomendación", type="primary"):
             )
 
             try:
-                pred_rf = float(modelo_rf.predict(df_input_modelo)[0])
+                pred_rf = redondear_hacia_arriba(float(modelo_rf.predict(df_input_modelo)[0]))
 
                 col_rf1, col_rf2 = st.columns(2)
-                col_rf1.metric("Predicción Baseline", f"{pred_baseline:.2f} u.")
-                col_rf2.metric("Predicción Random Forest", f"{pred_rf:.2f} u.")
+                col_rf1.metric("Predicción Baseline", f"{consumo_semana} u.")
+                col_rf2.metric("Predicción Random Forest", f"{pred_rf} u.")
 
-                diferencia = pred_rf - pred_baseline
+                diferencia = pred_rf - consumo_semana
                 st.caption(
-                    f"Diferencia Random Forest - Baseline: {diferencia:.2f} unidades. "
+                    f"Diferencia Random Forest - Baseline: {diferencia} unidades. "
                     "La decisión operativa del prototipo se mantiene en el Baseline, "
                     "por ser el mejor modelo en validación."
                 )
@@ -457,7 +484,9 @@ if st.button("Calcular recomendación", type="primary"):
                     st.dataframe(df_input_modelo, use_container_width=True)
 
             except Exception as e:
-                st.error(f"No fue posible ejecutar la predicción experimental con Random Forest: {e}")
+                st.error(
+                    f"No fue posible ejecutar la predicción experimental con Random Forest: {e}"
+                )
 
     # =====================================================
     # 5) VISUALIZACIÓN
@@ -465,7 +494,7 @@ if st.button("Calcular recomendación", type="primary"):
     st.markdown("## 5) Visualización")
 
     labels = ["Semana -4", "Semana -3", "Semana -2", "Semana -1", "Pred. Baseline"]
-    values = [semana_4, semana_3, semana_2, semana_1, pred_baseline]
+    values = [semana_4, semana_3, semana_2, semana_1, consumo_semana]
 
     if pred_rf is not None:
         labels.append("Pred. RF")
@@ -481,4 +510,4 @@ if st.button("Calcular recomendación", type="primary"):
     st.pyplot(fig)
 
 else:
-    st.caption("Ingresa los datos y presiona **Calcular recomendación** para generar la predicción.")
+    st.caption("Ingresa los datos y presiona *Calcular recomendación* para generar la predicción.")
