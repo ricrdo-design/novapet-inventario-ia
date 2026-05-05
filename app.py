@@ -23,34 +23,13 @@ st.set_page_config(
 # Ajusta precios si tienes valores reales actualizados
 # =========================================================
 CATALOGO_PRODUCTOS = {
-    "MELOXICAM 1.5MG 10ML": {
-        "categoria": "FARMACIA",
-        "precio": 1.70,
-    },
-    "RABISIN": {
-        "categoria": "VACUNAS",
-        "precio": 8.50,
-    },
-    "ENTEROCHRONIC": {
-        "categoria": "FARMACIA",
-        "precio": 2.80,
-    },
-    "PREVICOX 227MG TABLETA": {
-        "categoria": "FARMACIA",
-        "precio": 3.20,
-    },
-    "VACUNA C6/CV": {
-        "categoria": "VACUNAS",
-        "precio": 7.50,
-    },
-    "BRONCHICINE": {
-        "categoria": "VACUNAS",
-        "precio": 6.40,
-    },
-    "TRITON LEVOTIROXINA 0.8MG": {
-        "categoria": "FARMACIA",
-        "precio": 4.10,
-    },
+    "MELOXICAM 1.5MG 10ML": {"categoria": "FARMACIA", "precio": 1.70},
+    "RABISIN": {"categoria": "VACUNAS", "precio": 8.50},
+    "ENTEROCHRONIC": {"categoria": "FARMACIA", "precio": 2.80},
+    "PREVICOX 227MG TABLETA": {"categoria": "FARMACIA", "precio": 3.20},
+    "VACUNA C6/CV": {"categoria": "VACUNAS", "precio": 7.50},
+    "BRONCHICINE": {"categoria": "VACUNAS", "precio": 6.40},
+    "TRITON LEVOTIROXINA 0.8MG": {"categoria": "FARMACIA", "precio": 4.10},
 }
 
 
@@ -115,7 +94,7 @@ st.markdown(
     }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
@@ -126,12 +105,7 @@ def redondear_hacia_arriba(valor: float) -> int:
     return int(math.ceil(valor))
 
 
-def predecir_baseline(
-    semana_4: int,
-    semana_3: int,
-    semana_2: int,
-    semana_1: int,
-) -> float:
+def predecir_baseline(semana_4: int, semana_3: int, semana_2: int, semana_1: int) -> float:
     return (semana_4 + semana_3 + semana_2 + semana_1) / 4
 
 
@@ -179,7 +153,7 @@ def construir_input_modelo(
 
     tendencia_2 = semana_1 - semana_2
 
-    df_input = pd.DataFrame(
+    return pd.DataFrame(
         [
             {
                 "producto": producto,
@@ -200,8 +174,6 @@ def construir_input_modelo(
         ]
     )
 
-    return df_input
-
 
 @st.cache_resource
 def cargar_modelo_rf():
@@ -216,7 +188,7 @@ def render_card(texto: str, color_class: str):
 
 
 # =========================================================
-# CARGA DEL MODELO EXPERIMENTAL
+# CARGA MODELO RF
 # =========================================================
 modelo_rf = cargar_modelo_rf()
 
@@ -226,10 +198,7 @@ modelo_rf = cargar_modelo_rf()
 # =========================================================
 st.title("NovaPet | Predicción de inventario")
 st.subheader("Medicamentos y vacunas")
-st.caption(
-    "Prototipo funcional de apoyo a la decisión para estimar consumo semanal "
-    "y recomendar compras."
-)
+st.caption("Prototipo funcional de apoyo a la decisión para estimar consumo semanal y recomendar compras.")
 
 st.markdown(
     """
@@ -242,6 +211,10 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if st.button("Limpiar valores"):
+    st.session_state.clear()
+    st.rerun()
 
 
 # =========================================================
@@ -385,15 +358,11 @@ st.markdown("## 3) Predicción y recomendación")
 if st.button("Calcular recomendación", type="primary"):
     pred_baseline = predecir_baseline(semana_4, semana_3, semana_2, semana_1)
 
-    # Todo a enteros operativos
     consumo_semana = redondear_hacia_arriba(pred_baseline)
     demanda_4_semanas = consumo_semana * 4
-    stock_seguridad = redondear_hacia_arriba(
-        demanda_4_semanas * (stock_seguridad_pct / 100)
-    )
+    stock_seguridad = redondear_hacia_arriba(demanda_4_semanas * (stock_seguridad_pct / 100))
     stock_objetivo = demanda_4_semanas + stock_seguridad
-    compra_recomendada = max(stock_objetivo - int(stock_actual), 0)
-    compra_recomendada_redondeada = int(compra_recomendada)
+    compra_recomendada_redondeada = max(stock_objetivo - int(stock_actual), 0)
 
     st.markdown("### Resultado operativo")
 
@@ -404,25 +373,21 @@ if st.button("Calcular recomendación", type="primary"):
     k3.metric("Stock objetivo", f"{stock_objetivo} u.")
     k4.metric("Compra sugerida", f"{compra_recomendada_redondeada} u.")
 
-    # Riesgo e inversión
     if stock_actual < consumo_semana:
         st.error("Riesgo alto: el stock actual no cubre el consumo esperado de la próxima semana.")
+    else:
+        st.success("Stock suficiente para cubrir el consumo esperado de la próxima semana.")
 
     if compra_recomendada_redondeada > 0:
         costo_compra = compra_recomendada_redondeada * precio_unitario
-        st.info(f"Inversión estimada de compra: *${costo_compra:.2f} USD*")
+        st.info(f"Inversión estimada de compra: **${costo_compra:.2f} USD**")
+    else:
+        st.info("Inversión estimada de compra: **$0.00 USD**")
 
-    # Semáforo operativo
     if compra_recomendada_redondeada == 0:
-        render_card(
-            "Estado: stock suficiente. No se recomienda compra inmediata.",
-            "success-card",
-        )
+        render_card("Estado: stock suficiente. No se recomienda compra inmediata.", "success-card")
     elif compra_recomendada_redondeada <= 5:
-        render_card(
-            "Estado: compra moderada recomendada.",
-            "warning-card",
-        )
+        render_card("Estado: compra moderada recomendada.", "warning-card")
     else:
         render_card(
             "Estado: compra prioritaria recomendada para evitar quiebre de stock.",
@@ -431,12 +396,12 @@ if st.button("Calcular recomendación", type="primary"):
 
     st.markdown(
         f"""
-        *Detalle del cálculo:*  
-        - Consumo esperado próxima semana: *{consumo_semana} unidades*  
-        - Demanda proyectada a 4 semanas: *{demanda_4_semanas} unidades*  
-        - Stock de seguridad ({stock_seguridad_pct}%): *{stock_seguridad} unidades*  
-        - Stock objetivo: *{stock_objetivo} unidades*  
-        - Stock actual: *{int(stock_actual)} unidades*  
+        **Detalle del cálculo:**  
+        - Consumo esperado próxima semana: **{consumo_semana} unidades**  
+        - Demanda proyectada a 4 semanas: **{demanda_4_semanas} unidades**  
+        - Stock de seguridad ({stock_seguridad_pct}%): **{stock_seguridad} unidades**  
+        - Stock objetivo: **{stock_objetivo} unidades**  
+        - Stock actual: **{int(stock_actual)} unidades**  
         """
     )
 
@@ -450,7 +415,7 @@ if st.button("Calcular recomendación", type="primary"):
 
         if modelo_rf is None:
             st.warning(
-                "No se encontró el archivo *modelo_rf_inventario_novapet.pkl*. "
+                "No se encontró el archivo **modelo_rf_inventario_novapet.pkl**. "
                 "La comparación experimental con Random Forest no se puede ejecutar."
             )
         else:
@@ -484,9 +449,7 @@ if st.button("Calcular recomendación", type="primary"):
                     st.dataframe(df_input_modelo, use_container_width=True)
 
             except Exception as e:
-                st.error(
-                    f"No fue posible ejecutar la predicción experimental con Random Forest: {e}"
-                )
+                st.error(f"No fue posible ejecutar la predicción experimental con Random Forest: {e}")
 
     # =====================================================
     # 5) VISUALIZACIÓN
@@ -510,4 +473,4 @@ if st.button("Calcular recomendación", type="primary"):
     st.pyplot(fig)
 
 else:
-    st.caption("Ingresa los datos y presiona *Calcular recomendación* para generar la predicción.")
+    st.caption("Ingresa los datos y presiona **Calcular recomendación** para generar la predicción.")
