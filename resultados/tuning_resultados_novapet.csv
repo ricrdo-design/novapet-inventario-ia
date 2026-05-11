@@ -1,0 +1,7 @@
+Modelo,Config,MAE,RMSE,R2
+Random Forest,"{'n_estimators': 200, 'max_depth': None}",2.083378378378378,4.076507762845612,0.26347039707977216
+Random Forest,"{'n_estimators': 300, 'max_depth': 8}",2.0850741823802776,4.058806385843031,0.2698529590373717
+Random Forest,"{'n_estimators': 400, 'max_depth': None}",2.1021621621621627,4.1201072539175225,0.24763132931882914
+XGBoost,"{'n_estimators': 300, 'learning_rate': 0.05, 'max_depth': 4}",2.4414188861846924,4.296455057604085,0.18184775114059448
+XGBoost,"{'n_estimators': 300, 'learning_rate': 0.05, 'max_depth': 3}",2.497861385345459,4.472145337904376,0.1135680079460144
+XGBoost,"{'n_estimators': 300, 'learning_rate': 0.1, 'max_depth': 3}",2.506580352783203,4.361559248872002,0.15686488151550293
